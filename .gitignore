@@ -1,0 +1,7 @@
+# git ignore for C
+#
+*.vpp
+obj
+.vscode
+*.exe
+vina++

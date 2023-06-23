@@ -6,17 +6,15 @@ OBJDIR = ./obj
 
 CC = gcc
 
-# arquivos-objeto
-	objects = main.o
      
-all: main.o 
-	$(CC) -o vina++ $(OBJDIR)/main.o
-
-# codifica.o: codifica.c
-# 	$(CC) -c $(CFLAGS) codifica.c
+all: main.o files-list.o
+	$(CC) -o vina++ $(OBJDIR)/*.o
 
 main.o: $(SRCDIR)/main.c
 	$(CC) -c $(CFLAGS) $(SRCDIR)/main.c -o $(OBJDIR)/main.o
+
+files-list.o: $(SRCDIR)/files-list/files-list.c
+	$(CC) -c $(CFLAGS) $(SRCDIR)/files-list/files-list.c -o $(OBJDIR)/files-list.o
 
 clean:
 	-rm -f ./obj/*.o vina++

@@ -201,15 +201,12 @@ void printFilesList(FilesList *filesList) {
     }
 }
 
-/**
- * TODO: treat special case "./test.txt" should be treated as "test.txt"
-*/
 FileInfo *findFileInfo(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo;
 
     currentFileInfo = filesList->head;
     while (currentFileInfo) {
-        if (strcmp(currentFileInfo->name, filename) == 0) {
+        if (strcmp(currentFileInfo->name, prepareFileName(filename)) == 0) {
             return currentFileInfo;
         }
         currentFileInfo = currentFileInfo->next;

@@ -201,6 +201,9 @@ void printFilesList(FilesList *filesList) {
     }
 }
 
+/**
+ * TODO: treat special case "./test.txt" should be treated as "test.txt"
+*/
 FileInfo *findFileInfo(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo;
 

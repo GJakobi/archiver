@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
 #include <stdio.h>
@@ -5,7 +6,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <errno.h>
 #include <unistd.h>
 
 #include "./files-list/files-list.h"
@@ -151,7 +151,7 @@ void createFolder(char *folderName) {
 
 void createFoldersFromFilename(char *filename) {
     char *folderName = strtok(dirname(filename), "/");
-    char currentPath[MAX_NAME_SIZE];
+    char currentPath[MAX_NAME_SIZE] = "";
 
     while (folderName) {
         strcat(currentPath, folderName);
@@ -166,11 +166,36 @@ void createFoldersFromFilename(char *filename) {
     }
 }
 
+void extractOneFile(FilesList *filesList, FILE *archiveFile, char *filename) {
+    FileInfo *fileInfo;
+    FILE *extractedFile;
+    int i;
+
+    fileInfo = findFileInfo(filesList, filename);
+    if (!fileInfo) {
+        fprintf(stderr, "Error: file %s not found in archive.\n", filename);
+        exit(1);
+    }
+
+    createFoldersFromFilename(fileInfo->name);
+
+    extractedFile = fopen(fileInfo->name, "w");
+    if (!extractedFile) {
+        fprintf(stderr, "Error: could not create file %s.\n", fileInfo->name);
+        exit(1);
+    }
+
+    fseek(archiveFile, fileInfo->location, SEEK_SET);
+    for (i = 0; i < fileInfo->size; i += MAX_BUFFER_SIZE) {
+        writeBuffer(archiveFile, extractedFile, i, fileInfo->size);
+    }
+}
+
 void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
                              int optind) {
     FILE *archiveFile;
     FilesList *filesList;
-    FileInfo* fileInfo;
+    size_t i;
     long directoryAreaStart, numberOfFilesStored;
 
     archiveFile = fopen(archiveFilename, "r");
@@ -185,8 +210,9 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
     filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
                                            directoryAreaStart);
 
-
-    createFoldersFromFilename(argv[optind]);
+    for (i = optind; i < argc; i++) {
+        extractOneFile(filesList, archiveFile, argv[i]);
+    }
 
     fclose(archiveFile);
 }

@@ -191,6 +191,17 @@ void extractOneFile(FilesList *filesList, FILE *archiveFile, char *filename) {
     }
 }
 
+void extractAllFiles(FilesList *filesList, FILE *archiveFile) {
+    FileInfo *fileInfo;
+
+    fileInfo = filesList->head;
+
+    while (fileInfo) {
+        extractOneFile(filesList, archiveFile, fileInfo->name);
+        fileInfo = fileInfo->next;
+    }
+}
+
 void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
                              int optind) {
     FILE *archiveFile;
@@ -209,11 +220,19 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
 
     filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
                                            directoryAreaStart);
+    /**
+     * Caso não tenha sido passado nenhum arquivo específico, devemos extrair
+     * todos os arquivos
+     */
+    if (optind == argc) {
+        extractAllFiles(filesList, archiveFile);
+        fclose(archiveFile);
+        return;
+    }
 
     for (i = optind; i < argc; i++) {
         extractOneFile(filesList, archiveFile, argv[i]);
     }
-
     fclose(archiveFile);
 }
 

@@ -4,8 +4,7 @@
 #define MAX_NAME_SIZE 1024
 
 /**
- *  nome (sem espaços), UID (user ID), permissões, tamanho, data de modificação,
- * ordem no arquivo e localização.
+ *  Struct que define os conteúdos de um membro da area de diretório.
  */
 typedef struct FileInfo {
     char name[MAX_NAME_SIZE];
@@ -18,6 +17,9 @@ typedef struct FileInfo {
     struct FileInfo *next;
 } FileInfo;
 
+/**
+ * Lista de arquivos que estão na area de diretório
+ */
 typedef struct FilesList {
     FileInfo *head;
     long size;
@@ -48,6 +50,11 @@ void writeFilesListToDirectory(FilesList *filesList, FILE *archiveFile);
 FilesList *createFilesListFromArchive(FILE *archiveFile,
                                       int numberOfFilesStored,
                                       long directoryAreaStart);
+
+/**
+ * Retorna um FileInfo da área de diretório a partir do seu nome.
+ */
+FileInfo *findFileInfo(FilesList *filesList, char *filename);
 
 void printFilesList(FilesList *filesList);
 

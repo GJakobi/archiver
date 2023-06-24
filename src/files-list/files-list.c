@@ -1,9 +1,12 @@
 #include "files-list.h"
 
+#include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 /**
  * Caso o nome do arquivo contenha um diretório, transforma em um caminho
@@ -142,21 +145,72 @@ FilesList *destroyFilesList(FilesList *filesList) {
     return NULL;
 }
 
+void printFilePermissions(mode_t permissions) {
+    char formattedPermissions[11];
+
+    formattedPermissions[0] = (S_ISDIR(permissions)) ? 'd' : '-';
+    formattedPermissions[1] = (permissions & S_IRUSR) ? 'r' : '-';
+    formattedPermissions[2] = (permissions & S_IWUSR) ? 'w' : '-';
+    formattedPermissions[3] = (permissions & S_IXUSR) ? 'x' : '-';
+    formattedPermissions[4] = (permissions & S_IRGRP) ? 'r' : '-';
+    formattedPermissions[5] = (permissions & S_IWGRP) ? 'w' : '-';
+    formattedPermissions[6] = (permissions & S_IXGRP) ? 'x' : '-';
+    formattedPermissions[7] = (permissions & S_IROTH) ? 'r' : '-';
+    formattedPermissions[8] = (permissions & S_IWOTH) ? 'w' : '-';
+    formattedPermissions[9] = (permissions & S_IXOTH) ? 'x' : '-';
+    formattedPermissions[10] = '\0';
+
+    printf("%s", formattedPermissions);
+}
+
+/**
+ * Printa a lista de arquivos que esta na área do diretório em um formato
+ * parecido com o 'tar -tvf'
+ */
 void printFilesList(FilesList *filesList) {
+    FileInfo *currentFileInfo;
+    struct passwd *userInformation;
+    struct group *grp;
+    char formattedDate[20];
+
+    currentFileInfo = filesList->head;
+    while (currentFileInfo) {
+        printFilePermissions(currentFileInfo->permissions);
+
+        userInformation = getpwuid(currentFileInfo->userId);
+        if (!userInformation) {
+            fprintf(stderr, "Error: could not get user information.\n");
+            exit(1);
+        }
+
+        grp = getgrgid(userInformation->pw_gid);
+        if (!grp) {
+            fprintf(stderr, "Error: could not get group information.\n");
+            exit(1);
+        }
+
+        printf(" %s/%s         ", userInformation->pw_name, grp->gr_name);
+        printf("%lld ", (long long)currentFileInfo->size);
+
+        strftime(formattedDate, 20, "%Y-%m-%d %H:%M",
+                 localtime(&currentFileInfo->lastModificationTime));
+
+        printf("%s ", formattedDate);
+        printf("%s \n", currentFileInfo->name);
+        currentFileInfo = currentFileInfo->next;
+    }
+}
+
+FileInfo *findFileInfo(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo;
 
     currentFileInfo = filesList->head;
     while (currentFileInfo) {
-        printf("Name: %s\n", currentFileInfo->name);
-        printf("Location: %d\n", currentFileInfo->location);
-        printf("User ID: %d\n", currentFileInfo->userId);
-        printf("Permissions: %d\n", currentFileInfo->permissions);
-        printf("Size: %ld\n", currentFileInfo->size);
-        printf("Last modification time: %ld\n",
-               currentFileInfo->lastModificationTime);
-        printf("Order: %d\n", currentFileInfo->order);
-        printf("\n");
-
+        if (strcmp(currentFileInfo->name, filename) == 0) {
+            return currentFileInfo;
+        }
         currentFileInfo = currentFileInfo->next;
     }
+
+    return NULL;
 }

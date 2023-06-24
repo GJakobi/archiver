@@ -1,6 +1,11 @@
 #include <getopt.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <unistd.h>
 
 #include "./files-list/files-list.h"
@@ -8,7 +13,7 @@
 #define MAX_BUFFER_SIZE 1024
 #define HEADER_SIZE 2 * sizeof(long)
 
-typedef enum { NONE, INSERT } COMMAND;
+typedef enum { NONE, INSERT, LIST, EXTRACT } COMMAND;
 
 /**
  * Pega as informações guardadas nos dois primeiros bytes: o local em que a
@@ -114,6 +119,78 @@ void insertFilesIntoArchive(char *archiveFileName, int argc, char *argv[],
     fclose(archiveFile);
 }
 
+void listFilesFromArchive(char *archiveFileName) {
+    FILE *archiveFile;
+    FilesList *filesList;
+    long directoryAreaStart, numberOfFilesStored;
+
+    archiveFile = fopen(archiveFileName, "r");
+    if (!archiveFile) {
+        fprintf(stderr, "Error: could not open archive file %s.\n",
+                archiveFileName);
+        exit(1);
+    }
+
+    getHeaderData(1, archiveFile, &directoryAreaStart, &numberOfFilesStored);
+
+    filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
+                                           directoryAreaStart);
+
+    printFilesList(filesList);
+
+    fclose(archiveFile);
+}
+
+void createFolder(char *folderName) {
+    if (mkdir(folderName, 0777) == -1 && errno != EEXIST) {
+        perror("Error");
+        fprintf(stderr, "could not create folder %s\n", folderName);
+        exit(1);
+    }
+}
+
+void createFoldersFromFilename(char *filename) {
+    char *folderName = strtok(dirname(filename), "/");
+    char currentPath[MAX_NAME_SIZE];
+
+    while (folderName) {
+        strcat(currentPath, folderName);
+
+        if (strlen(currentPath) != 1) {
+            createFolder(currentPath);
+        }
+
+        strcat(currentPath, "/");
+
+        folderName = strtok(NULL, "/");
+    }
+}
+
+void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
+                             int optind) {
+    FILE *archiveFile;
+    FilesList *filesList;
+    FileInfo* fileInfo;
+    long directoryAreaStart, numberOfFilesStored;
+
+    archiveFile = fopen(archiveFilename, "r");
+    if (!archiveFile) {
+        fprintf(stderr, "Error: could not open archive file %s.\n",
+                archiveFilename);
+        exit(1);
+    }
+
+    getHeaderData(1, archiveFile, &directoryAreaStart, &numberOfFilesStored);
+
+    filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
+                                           directoryAreaStart);
+
+
+    createFoldersFromFilename(argv[optind]);
+
+    fclose(archiveFile);
+}
+
 void testeREAD() {
     FILE *bin = fopen("backup.vpp", "rb");
     FileInfo *fileInfo = malloc(sizeof(FileInfo));
@@ -151,14 +228,22 @@ int main(int argc, char *argv[]) {
     char *archiveFileName = NULL;
     COMMAND command = NONE;
 
-    testeREAD();
-    return 1;
+    // testeREAD();
+    // return 1;
 
-    while ((option = getopt(argc, argv, "i:")) != -1) {
+    while ((option = getopt(argc, argv, "i:c:x:")) != -1) {
         switch (option) {
             case 'i':
                 archiveFileName = optarg;
                 command = INSERT;
+                break;
+            case 'c':
+                archiveFileName = optarg;
+                command = LIST;
+                break;
+            case 'x':
+                archiveFileName = optarg;
+                command = EXTRACT;
                 break;
             default:
                 fprintf(stderr, "Error: invalid option used.\n");
@@ -170,7 +255,12 @@ int main(int argc, char *argv[]) {
         case INSERT:
             insertFilesIntoArchive(archiveFileName, argc, argv, optind);
             break;
-
+        case LIST:
+            listFilesFromArchive(archiveFileName);
+            break;
+        case EXTRACT:
+            extractFilesFromArchive(archiveFileName, argc, argv, optind);
+            break;
         default:
             break;
     }

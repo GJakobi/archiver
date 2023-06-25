@@ -60,12 +60,14 @@ void extractOneFile(FilesList *filesList, FILE *archiveFile, char *filename) {
         exit(1);
     }
 
-    // TODO: give permissions to file
+    chmod(fileInfo->name, fileInfo->permissions);
 
     fseek(archiveFile, fileInfo->location, SEEK_SET);
     for (i = 0; i < fileInfo->size; i += MAX_BUFFER_SIZE) {
         writeBuffer(archiveFile, extractedFile, i, fileInfo->size);
     }
+
+    fclose(extractedFile);
 }
 
 void extractAllFiles(FilesList *filesList, FILE *archiveFile) {
@@ -104,6 +106,7 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
      */
     if (optind == argc) {
         extractAllFiles(filesList, archiveFile);
+        destroyFilesList(filesList);
         fclose(archiveFile);
         return;
     }
@@ -111,5 +114,7 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
     for (i = optind; i < argc; i++) {
         extractOneFile(filesList, archiveFile, argv[i]);
     }
+
+    destroyFilesList(filesList);
     fclose(archiveFile);
 }

@@ -209,8 +209,7 @@ void printFilesList(FilesList *filesList) {
 
 void removeFileFromFilesList(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo, *previousFileInfo;
-    char* preparedFileName = prepareFileName(filename);
-    
+    char *preparedFileName = prepareFileName(filename);
 
     currentFileInfo = filesList->head;
     previousFileInfo = NULL;
@@ -247,12 +246,12 @@ void updateFileInfoAfterDelete(FileInfo *fileInfo) {
 void moveFileInfo(FilesList *filesList, FileInfo *targetFile,
                   FileInfo *fileToBeMoved) {
     FileInfo *currentFileInfo, *previousFileInfo;
+    char *preparedFileName = prepareFileName(fileToBeMoved->name);
 
     currentFileInfo = filesList->head;
     previousFileInfo = NULL;
     while (currentFileInfo) {
-        if (strcmp(currentFileInfo->name,
-                   prepareFileName(fileToBeMoved->name)) == 0) {
+        if (strcmp(currentFileInfo->name, preparedFileName) == 0) {
             if (previousFileInfo) {
                 previousFileInfo->next = currentFileInfo->next;
             } else {
@@ -260,11 +259,14 @@ void moveFileInfo(FilesList *filesList, FileInfo *targetFile,
             }
             currentFileInfo->next = targetFile->next;
             targetFile->next = currentFileInfo;
+            free(preparedFileName);
             return;
         }
         previousFileInfo = currentFileInfo;
         currentFileInfo = currentFileInfo->next;
     }
+
+    free(preparedFileName);
 }
 
 FileInfo *findFileInfo(FilesList *filesList, char *filename) {

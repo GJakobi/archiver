@@ -266,6 +266,8 @@ void moveFilesFromArchive(char *target, int argc, char *argv[], int optind) {
     fseek(archiveFile, directoryAreaStart, SEEK_SET);
     writeFilesListToDirectory(filesList, archiveFile);
 
+    destroyFilesList(filesList);
+
     fclose(archiveFile);
 }
 

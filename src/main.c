@@ -13,7 +13,7 @@
 #define MAX_BUFFER_SIZE 2
 #define HEADER_SIZE 2 * sizeof(long)
 
-typedef enum { NONE, INSERT, LIST, EXTRACT, REMOVE, APPEND } COMMAND;
+typedef enum { NONE, INSERT, LIST, EXTRACT, REMOVE, APPEND, HELP } COMMAND;
 
 void updateHeaderData(FILE *archiveFile, long *directoryAreaStart,
                       long *numberOfFilesStored) {
@@ -370,12 +370,38 @@ void removeFilesFromArchive(char *archiveFilename, int argc, char *argv[],
     fclose(archiveFile);
 }
 
+void printHelp() {
+    printf("Execucao: vina++ <opção> <archive> [membro1 membro2 ...]\n");
+
+    printf("Opcoes:\n");
+    printf(
+        "-i: insere/acrescenta um ou mais membros ao archive. Caso o membro "
+        "já exista no archive, ele deve ser substituído. Novos membros são "
+        "inseridos respeitando a ordem da linha de comando, ao final do "
+        "archive.\n");
+    printf(
+        "-a : mesmo comportamento da opção -i, mas a substituição de um membro "
+        "existente ocorre APENAS caso o parâmetro seja mais recente que o "
+        "arquivado.\n");
+    printf(
+        "-m target: move o membro indicado na linha de comando para "
+        "imediatamente depois do membro target existente em archive.\n");
+    printf(
+        "-x: extrai os membros indicados de archive. Se os membros não forem "
+        "indicados, todos devem ser extraídos.\n");
+    printf("-r: remove os membros indicados de archive;\n");
+    printf(
+        "-c: lista o conteúdo de archive em ordem, incluindo as propriedades "
+        "de cada membro (nome, UID, permissões, tamanho e data de modificação) "
+        "e sua ordem no arquivo.\n");
+}
+
 int main(int argc, char *argv[]) {
     int option;
     char *archiveFileName = NULL;
     COMMAND command = NONE;
 
-    while ((option = getopt(argc, argv, "i:c:x:r:a:")) != -1) {
+    while ((option = getopt(argc, argv, "i:c:x:r:a:h")) != -1) {
         switch (option) {
             case 'a':
                 archiveFileName = optarg;
@@ -397,6 +423,9 @@ int main(int argc, char *argv[]) {
                 archiveFileName = optarg;
                 command = REMOVE;
                 break;
+            case 'h':
+                command = HELP;
+                break;
             default:
                 fprintf(stderr, "Error: invalid option used.\n");
                 exit(1);
@@ -417,6 +446,9 @@ int main(int argc, char *argv[]) {
             break;
         case REMOVE:
             removeFilesFromArchive(archiveFileName, argc, argv, optind);
+            break;
+        case HELP:
+            printHelp();
             break;
         default:
             break;

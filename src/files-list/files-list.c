@@ -201,6 +201,38 @@ void printFilesList(FilesList *filesList) {
     }
 }
 
+void removeFileFromFilesList(FilesList *filesList, char *filename) {
+    FileInfo *currentFileInfo, *previousFileInfo;
+
+    currentFileInfo = filesList->head;
+    previousFileInfo = NULL;
+    while (currentFileInfo) {
+        if (strcmp(currentFileInfo->name, prepareFileName(filename)) == 0) {
+            if (previousFileInfo) {
+                previousFileInfo->next = currentFileInfo->next;
+            } else {
+                filesList->head = currentFileInfo->next;
+            }
+            free(currentFileInfo);
+            filesList->size--;
+            return;
+        }
+        previousFileInfo = currentFileInfo;
+        currentFileInfo = currentFileInfo->next;
+    }
+}
+
+void updateFileInfoAfterDelete(FileInfo *fileInfo) {
+    FileInfo *currentFileInfo;
+
+    currentFileInfo = fileInfo;
+    while (currentFileInfo) {
+        currentFileInfo->location -= fileInfo->size;
+        currentFileInfo->order--;
+        currentFileInfo = currentFileInfo->next;
+    }
+}
+
 FileInfo *findFileInfo(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo;
 

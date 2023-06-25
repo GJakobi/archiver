@@ -10,10 +10,83 @@
 
 #include "./files-list/files-list.h"
 
-#define MAX_BUFFER_SIZE 1024
+#define MAX_BUFFER_SIZE 2
 #define HEADER_SIZE 2 * sizeof(long)
 
-typedef enum { NONE, INSERT, LIST, EXTRACT } COMMAND;
+typedef enum { NONE, INSERT, LIST, EXTRACT, REMOVE, APPEND } COMMAND;
+
+void updateHeaderData(FILE *archiveFile, long *directoryAreaStart,
+                      long *numberOfFilesStored) {
+    fseek(archiveFile, 0, SEEK_SET);
+    fwrite(directoryAreaStart, sizeof(long), 1, archiveFile);
+    fwrite(numberOfFilesStored, sizeof(long), 1, archiveFile);
+}
+
+void moveBytesBack(FILE *file, long destination, long sourceStart) {
+    long fileSize, bytesToMove, bytesRead, bytesRemaining;
+    int bytesToRead = MAX_BUFFER_SIZE;
+    char buffer[MAX_BUFFER_SIZE];
+
+    fseek(file, 0, SEEK_END);
+    fileSize = ftell(file);
+
+    bytesRead = 0;
+    bytesToMove = fileSize - sourceStart;
+
+    while (bytesRead < bytesToMove) {
+        bytesRemaining = bytesToMove - bytesRead;
+
+        if (bytesRemaining < MAX_BUFFER_SIZE) {
+            bytesToRead = bytesRemaining;
+        }
+
+        fseek(file, sourceStart + bytesRead, SEEK_SET);
+        fread(buffer, bytesToRead, 1, file);
+        fseek(file, destination + bytesRead, SEEK_SET);
+        fwrite(buffer, bytesToRead, 1, file);
+        bytesRead += bytesToRead;
+    }
+}
+
+void removeOneFile(FILE *archiveFile, char *filename, char *archiveFilename,
+                   long *dirAreaStart, long *numFilesStored,
+                   FilesList *filesList) {
+    /* Bytes que sobram depois de deletar o arquivo (sem
+    contar com os bytes da area de diretorio) */
+    int byterAfterDelete;
+    FileInfo *fileInfo;
+
+    fileInfo = findFileInfo(filesList, filename);
+    if (!fileInfo) {
+        fprintf(stderr, "Error: file %s not found in archive.\n", filename);
+        exit(1);
+    }
+
+    byterAfterDelete = *dirAreaStart - fileInfo->size;
+
+    moveBytesBack(archiveFile, fileInfo->location,
+                  fileInfo->location + fileInfo->size);
+
+    *dirAreaStart -= fileInfo->size;
+    *numFilesStored -= 1;
+
+    updateFileInfoAfterDelete(fileInfo);
+
+    removeFileFromFilesList(filesList, fileInfo->name);
+
+    truncate(archiveFilename, byterAfterDelete);
+}
+
+/**
+ * Atualiza a área de diretorio e o header do arquivo.
+ */
+void updateArchiveAfterRemoval(FILE *archiveFile, FilesList *filesList,
+                               long directoryAreaStart,
+                               long numberOfFilesStored) {
+    fseek(archiveFile, directoryAreaStart, SEEK_SET);
+    writeFilesListToDirectory(filesList, archiveFile);
+    updateHeaderData(archiveFile, &directoryAreaStart, &numberOfFilesStored);
+}
 
 /**
  * Pega as informações guardadas nos dois primeiros bytes: o local em que a
@@ -31,13 +104,6 @@ void getHeaderData(int archiveFileExists, FILE *archiveFile,
         fread(directoryAreaStart, sizeof(long), 1, archiveFile);
         fread(numberOfFilesStored, sizeof(long), 1, archiveFile);
     }
-}
-
-void updateHeaderData(FILE *archiveFile, long *directoryAreaStart,
-                      long *numberOfFilesStored) {
-    fseek(archiveFile, 0, SEEK_SET);
-    fwrite(directoryAreaStart, sizeof(long), 1, archiveFile);
-    fwrite(numberOfFilesStored, sizeof(long), 1, archiveFile);
 }
 
 void writeBuffer(FILE *source, FILE *destination, int offset, size_t size) {
@@ -58,12 +124,34 @@ void writeBuffer(FILE *source, FILE *destination, int offset, size_t size) {
 }
 
 /**
+ * Determina se um arquivo deve ser substituido ou não quando ele ja existe no
+ * archive.
+ */
+int shouldUpdateFile(FileInfo *fileInfo, int command) {
+    struct stat fileInfoStat;
+    int readFileStat;
+
+    readFileStat = stat(fileInfo->name, &fileInfoStat);
+    if (readFileStat == -1) {
+        fprintf(stderr, "Error: could not stat file %s.\n", fileInfo->name);
+        exit(1);
+    }
+
+    if (command != APPEND ||
+        fileInfoStat.st_mtime > fileInfo->lastModificationTime) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
  * Recebe o nome do arquivo, o argc e argv, e o optind, que indica o indice do
  * proximo argumento a ser lido, nesse caso, os arquivos restantes a serem
  * inseridos.
  */
 void insertFilesIntoArchive(char *archiveFileName, int argc, char *argv[],
-                            int optind) {
+                            int optind, int command) {
     FILE *archiveFile, *fileToInsert;
     int archiveFileExists, i, j;
     long directoryAreaStart, numberOfFilesStored = 0;
@@ -91,6 +179,21 @@ void insertFilesIntoArchive(char *archiveFileName, int argc, char *argv[],
     }
 
     for (i = optind; i < argc; i++) {
+        fileInfo = findFileInfo(filesList, argv[i]);
+        if (fileInfo) {
+            if (shouldUpdateFile(fileInfo, command)) {
+                removeOneFile(archiveFile, fileInfo->name, archiveFileName,
+                              &directoryAreaStart, &numberOfFilesStored,
+                              filesList);
+                updateArchiveAfterRemoval(archiveFile, filesList,
+                                          directoryAreaStart,
+                                          numberOfFilesStored);
+                fseek(archiveFile, directoryAreaStart, SEEK_SET);
+            } else {
+                continue;
+            }
+        }
+
         fileToInsert = fopen(argv[i], "r");
         if (!fileToInsert) {
             fprintf(stderr, "Error: could not open file %s.\n", argv[i]);
@@ -106,7 +209,6 @@ void insertFilesIntoArchive(char *archiveFileName, int argc, char *argv[],
             writeBuffer(fileToInsert, archiveFile, j, fileInfo->size);
         }
 
-        // atualiza o inicio da area do diretorio
         directoryAreaStart += fileInfo->size;
         numberOfFilesStored++;
         fclose(fileToInsert);
@@ -185,6 +287,8 @@ void extractOneFile(FilesList *filesList, FILE *archiveFile, char *filename) {
         exit(1);
     }
 
+    // TODO: give permissions to file
+
     fseek(archiveFile, fileInfo->location, SEEK_SET);
     for (i = 0; i < fileInfo->size; i += MAX_BUFFER_SIZE) {
         writeBuffer(archiveFile, extractedFile, i, fileInfo->size);
@@ -236,36 +340,34 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
     fclose(archiveFile);
 }
 
-void testeREAD() {
-    FILE *bin = fopen("backup.vpp", "rb");
-    FileInfo *fileInfo = malloc(sizeof(FileInfo));
-    char content[1025];
+void removeFilesFromArchive(char *archiveFilename, int argc, char *argv[],
+                            int optind) {
+    FILE *archiveFile;
+    FilesList *filesList;
+    long directoryAreaStart, numberOfFilesStored;
+    size_t i;
 
-    int i;
-
-    long directoryAreaStart, numOfFilesStored;
-    fread(&directoryAreaStart, sizeof(long), 1, bin);
-    printf("directoryAreaStart: %ld\n", directoryAreaStart);
-    fread(&numOfFilesStored, sizeof(long), 1, bin);
-    printf("numOfFilesStored: %ld\n", numOfFilesStored);
-
-    for (i = 0; i < numOfFilesStored; i++) {
-        fread(content, 1, 3, bin);
-        printf("content %d: %s\n", i + 1, content);
+    archiveFile = fopen(archiveFilename, "r+");
+    if (!archiveFile) {
+        fprintf(stderr, "Error: could not open archive file %s.\n",
+                archiveFilename);
+        exit(1);
     }
 
-    for (i = 0; i < numOfFilesStored; i++) {
-        printf("--- READING FILE %d ---\n", i + 1);
+    getHeaderData(1, archiveFile, &directoryAreaStart, &numberOfFilesStored);
 
-        fread(fileInfo, sizeof(FileInfo), 1, bin);
-        printf("name: %s\n", fileInfo->name);
-        printf("userId: %u\n", fileInfo->userId);
-        printf("permissions: %hu\n", fileInfo->permissions);
-        printf("size: %lld\n", fileInfo->size);
-        printf("lastModificationTime: %ld\n", fileInfo->lastModificationTime);
-        printf("order: %d\n", fileInfo->order);
-        printf("location: %lu\n", fileInfo->location);
+    filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
+                                           directoryAreaStart);
+
+    for (i = optind; i < argc; i++) {
+        removeOneFile(archiveFile, argv[i], archiveFilename,
+                      &directoryAreaStart, &numberOfFilesStored, filesList);
     }
+
+    updateArchiveAfterRemoval(archiveFile, filesList, directoryAreaStart,
+                              numberOfFilesStored);
+
+    fclose(archiveFile);
 }
 
 int main(int argc, char *argv[]) {
@@ -273,11 +375,12 @@ int main(int argc, char *argv[]) {
     char *archiveFileName = NULL;
     COMMAND command = NONE;
 
-    // testeREAD();
-    // return 1;
-
-    while ((option = getopt(argc, argv, "i:c:x:")) != -1) {
+    while ((option = getopt(argc, argv, "i:c:x:r:a:")) != -1) {
         switch (option) {
+            case 'a':
+                archiveFileName = optarg;
+                command = APPEND;
+                break;
             case 'i':
                 archiveFileName = optarg;
                 command = INSERT;
@@ -290,6 +393,10 @@ int main(int argc, char *argv[]) {
                 archiveFileName = optarg;
                 command = EXTRACT;
                 break;
+            case 'r':
+                archiveFileName = optarg;
+                command = REMOVE;
+                break;
             default:
                 fprintf(stderr, "Error: invalid option used.\n");
                 exit(1);
@@ -297,14 +404,19 @@ int main(int argc, char *argv[]) {
     }
 
     switch (command) {
+        case APPEND:
         case INSERT:
-            insertFilesIntoArchive(archiveFileName, argc, argv, optind);
+            insertFilesIntoArchive(archiveFileName, argc, argv, optind,
+                                   command);
             break;
         case LIST:
             listFilesFromArchive(archiveFileName);
             break;
         case EXTRACT:
             extractFilesFromArchive(archiveFileName, argc, argv, optind);
+            break;
+        case REMOVE:
+            removeFilesFromArchive(archiveFileName, argc, argv, optind);
             break;
         default:
             break;

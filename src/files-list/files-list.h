@@ -56,6 +56,14 @@ FilesList *createFilesListFromArchive(FILE *archiveFile,
  */
 FileInfo *findFileInfo(FilesList *filesList, char *filename);
 
+void removeFileFromFilesList(FilesList *filesList, char *filename);
+
 void printFilesList(FilesList *filesList);
+
+/**
+ * Atualiza a ordem e a localizacao de todos os FileInfos da lista de arquivos
+ * que estavam após o arquivo deletado
+ */
+void updateFileInfoAfterDelete(FileInfo *fileInfo);
 
 FilesList *destroyFilesList(FilesList *filesList);

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "../buffer/buffer.h"
@@ -163,6 +164,8 @@ void insertFilesIntoArchive(char *archiveFileName, int argc, char *argv[],
 
     updateHeaderData(archiveFile, &directoryAreaStart, &numberOfFilesStored);
 
+    destroyFilesList(filesList);
+
     fclose(archiveFile);
 }
 
@@ -184,6 +187,8 @@ void listFilesFromArchive(char *archiveFileName) {
                                            directoryAreaStart);
 
     printFilesList(filesList);
+
+    destroyFilesList(filesList);
 
     fclose(archiveFile);
 }
@@ -215,6 +220,7 @@ void removeFilesFromArchive(char *archiveFilename, int argc, char *argv[],
     updateArchiveAfterRemoval(archiveFile, filesList, directoryAreaStart,
                               numberOfFilesStored);
 
+    destroyFilesList(filesList);
     fclose(archiveFile);
 }
 

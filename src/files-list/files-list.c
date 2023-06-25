@@ -39,6 +39,7 @@ FileInfo *createFileInfo(char *fileName, int order, int location) {
     FileInfo *fileInfo;
     struct stat fileInfoStat;
     int readFileStat;
+    char *preparedFileName;
 
     fileInfo = malloc(sizeof(FileInfo));
     if (!fileInfo) {
@@ -52,13 +53,18 @@ FileInfo *createFileInfo(char *fileName, int order, int location) {
         exit(1);
     }
 
-    strcpy(fileInfo->name, prepareFileName(fileName));
+    preparedFileName = prepareFileName(fileName);
+
+    strcpy(fileInfo->name, preparedFileName);
     fileInfo->location = location;
     fileInfo->userId = fileInfoStat.st_uid;
     fileInfo->permissions = fileInfoStat.st_mode;
     fileInfo->size = fileInfoStat.st_size;
     fileInfo->lastModificationTime = fileInfoStat.st_mtime;
     fileInfo->order = order;
+    fileInfo->next = NULL;
+
+    free(preparedFileName);
 
     return fileInfo;
 }
@@ -99,7 +105,7 @@ void insertFileIntoFilesList(FilesList *filesList, FileInfo *fileInfo) {
 }
 
 void writeFilesListToDirectory(FilesList *filesList, FILE *archiveFile) {
-    FileInfo *currentFileInfo;
+    FileInfo *currentFileInfo = NULL;
 
     currentFileInfo = filesList->head;
     while (currentFileInfo) {
@@ -203,23 +209,28 @@ void printFilesList(FilesList *filesList) {
 
 void removeFileFromFilesList(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo, *previousFileInfo;
+    char* preparedFileName = prepareFileName(filename);
+    
 
     currentFileInfo = filesList->head;
     previousFileInfo = NULL;
     while (currentFileInfo) {
-        if (strcmp(currentFileInfo->name, prepareFileName(filename)) == 0) {
+        if (strcmp(currentFileInfo->name, preparedFileName) == 0) {
             if (previousFileInfo) {
                 previousFileInfo->next = currentFileInfo->next;
             } else {
                 filesList->head = currentFileInfo->next;
             }
             free(currentFileInfo);
+            free(preparedFileName);
             filesList->size--;
             return;
         }
         previousFileInfo = currentFileInfo;
         currentFileInfo = currentFileInfo->next;
     }
+
+    free(preparedFileName);
 }
 
 void updateFileInfoAfterDelete(FileInfo *fileInfo) {
@@ -258,14 +269,17 @@ void moveFileInfo(FilesList *filesList, FileInfo *targetFile,
 
 FileInfo *findFileInfo(FilesList *filesList, char *filename) {
     FileInfo *currentFileInfo;
+    char *preparedFileName = prepareFileName(filename);
 
     currentFileInfo = filesList->head;
     while (currentFileInfo) {
-        if (strcmp(currentFileInfo->name, prepareFileName(filename)) == 0) {
+        if (strcmp(currentFileInfo->name, preparedFileName) == 0) {
+            free(preparedFileName);
             return currentFileInfo;
         }
         currentFileInfo = currentFileInfo->next;
     }
 
+    free(preparedFileName);
     return NULL;
 }

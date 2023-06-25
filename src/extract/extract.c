@@ -3,13 +3,13 @@
 #include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <stdlib.h>
 
-#include "../files-list/files-list.h"
-#include "../buffer/buffer.h" 
 #include "../archive-manipulation/archive-manipulation.h"
+#include "../buffer/buffer.h"
+#include "../files-list/files-list.h"
 
 void createFolder(char *folderName) {
     if (mkdir(folderName, 0777) == -1 && errno != EEXIST) {
@@ -20,7 +20,10 @@ void createFolder(char *folderName) {
 }
 
 void createFoldersFromFilename(char *filename) {
-    char *folderName = strtok(dirname(filename), "/");
+    char *filenameCopy = malloc(strlen(filename) + 1);
+    strcpy(filenameCopy, filename);
+
+    char *folderName = strtok(dirname(filenameCopy), "/");
     char currentPath[MAX_NAME_SIZE] = "";
 
     while (folderName) {
@@ -34,6 +37,8 @@ void createFoldersFromFilename(char *filename) {
 
         folderName = strtok(NULL, "/");
     }
+
+    free(filenameCopy);
 }
 
 void extractOneFile(FilesList *filesList, FILE *archiveFile, char *filename) {
@@ -92,6 +97,7 @@ void extractFilesFromArchive(char *archiveFilename, int argc, char *argv[],
 
     filesList = createFilesListFromArchive(archiveFile, numberOfFilesStored,
                                            directoryAreaStart);
+
     /**
      * Caso não tenha sido passado nenhum arquivo específico, devemos extrair
      * todos os arquivos

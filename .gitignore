@@ -5,3 +5,4 @@ obj
 .vscode
 *.exe
 vina++
+.DS_STORE

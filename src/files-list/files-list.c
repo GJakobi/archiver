@@ -190,7 +190,7 @@ void printFilesList(FilesList *filesList) {
         }
 
         printf(" %s/%s         ", userInformation->pw_name, grp->gr_name);
-        printf("%lld ", (long long)currentFileInfo->size);
+        printf("%8lld ", (long long)currentFileInfo->size);
 
         strftime(formattedDate, 20, "%Y-%m-%d %H:%M",
                  localtime(&currentFileInfo->lastModificationTime));
@@ -229,6 +229,29 @@ void updateFileInfoAfterDelete(FileInfo *fileInfo) {
     while (currentFileInfo) {
         currentFileInfo->location -= fileInfo->size;
         currentFileInfo->order--;
+        currentFileInfo = currentFileInfo->next;
+    }
+}
+
+void moveFileInfo(FilesList *filesList, FileInfo *targetFile,
+                  FileInfo *fileToBeMoved) {
+    FileInfo *currentFileInfo, *previousFileInfo;
+
+    currentFileInfo = filesList->head;
+    previousFileInfo = NULL;
+    while (currentFileInfo) {
+        if (strcmp(currentFileInfo->name,
+                   prepareFileName(fileToBeMoved->name)) == 0) {
+            if (previousFileInfo) {
+                previousFileInfo->next = currentFileInfo->next;
+            } else {
+                filesList->head = currentFileInfo->next;
+            }
+            currentFileInfo->next = targetFile->next;
+            targetFile->next = currentFileInfo;
+            return;
+        }
+        previousFileInfo = currentFileInfo;
         currentFileInfo = currentFileInfo->next;
     }
 }

@@ -1,3 +1,6 @@
+#ifndef __FILES_LIST__
+#define __FILES_LIST__
+
 #include <stdio.h>
 #include <sys/types.h>
 
@@ -66,4 +69,13 @@ void printFilesList(FilesList *filesList);
  */
 void updateFileInfoAfterDelete(FileInfo *fileInfo);
 
+/**
+ * Move o "fileToBeMoved" para imediatamente após o "targetFile" na lista de
+ * arquivos.
+ */
+void moveFileInfo(FilesList *filesList, FileInfo *targetFile,
+                  FileInfo *fileToBeMoved);
+
 FilesList *destroyFilesList(FilesList *filesList);
+
+#endif

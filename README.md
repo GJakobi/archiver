@@ -2,7 +2,7 @@
 Archiver similar to .tar, .zip, .7z
 
 ## Usage: 
-- Show all the commands.
+- List all the commands  
 ```vina++ -h ```
 
 - Includes "file.txt" and "anotherFile.txt" in archive.vpp  

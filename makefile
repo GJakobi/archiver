@@ -6,9 +6,11 @@ OBJDIR = ./obj
 
 CC = gcc
 
-     
-all: main.o files-list.o extract.o buffer.o archive-manipulation.o
+all: create_obj_dir main.o files-list.o extract.o buffer.o archive-manipulation.o
 	$(CC) -o vina++ $(OBJDIR)/*.o
+
+create_obj_dir:
+	@mkdir -p obj
 
 main.o: $(SRCDIR)/main.c
 	$(CC) -c $(CFLAGS) $(SRCDIR)/main.c -o $(OBJDIR)/main.o

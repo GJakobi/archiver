@@ -2,7 +2,10 @@
 Archiver similar to .tar, .zip, .7z
 
 ## Usage: 
-- Show all the commands.
+Clone the repo and run ```make```. You can start already start using with ```./vina++ ...``` or add it to your PATH
+sou you don't need the "./" before.
+
+- List all the commands  
 ```vina++ -h ```
 
 - Includes "file.txt" and "anotherFile.txt" in archive.vpp  
@@ -31,9 +34,11 @@ contribute to open source, below are listed some things you could do, ranked by 
 ### Easy
 - Translate all the comments to English
 - Improve the "-h" command.
+- Create an output for the commands instead of just finishing without any message. (Like displaying a message that the extraction is complete)
 
 ### Medium
 - Make the "move" function actually move the bytes inside the content area instead of just moving in the FilesList.
+- If any errors occurs during the process, create a function that recovers the file to a not-corrupted state
 
 ### Hard
 - Add a compression algorithm to make the archive size smaller. Could be a simple algo like RLE, feel free to DM to discuss it.

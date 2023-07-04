@@ -3,10 +3,10 @@ Archiver similar to .tar, .zip, .7z
 
 ## Usage: 
 Clone the repo and run ```make```. You can start already start using with ```./vina++ ...``` or add it to your PATH
-sou you don't need the "./" before.
+so you don't need the "./" before.
 
 - List all the commands  
-```vina++ -h ```
+```vina++ -h```
 
 - Includes "file.txt" and "anotherFile.txt" in archive.vpp  
 ```vina++ -i archive.vpp file.txt anotherFile.txt```
